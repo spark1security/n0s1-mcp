@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "n0s1-mcp"
+version = "0.1.0"
+description = "MCP server for n0s1 — scan Jira, Confluence, Slack, GitHub, GitLab, Zendesk, Linear, Asana, Wrike, and local files for leaked secrets"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "n0s1-mcp contributors" }]
+keywords = ["mcp", "secrets", "security", "scanning", "n0s1", "devsecops"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "n0s1>=1.1.1",
+    "mcp>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/spark1security/n0s1"
+Repository = "https://github.com/spark1security/n0s1-mcp"
+"Bug Tracker" = "https://github.com/spark1security/n0s1-mcp/issues"
+
+[project.scripts]
+n0s1-mcp = "n0s1_mcp_server:main"
+
+[tool.hatch.build.targets.wheel]
+include = ["n0s1_mcp_server.py"]

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# n0s1 output
+n0s1_report.json
+
+# Tools
+.idea/
+.vscode/
+.DS_Store
