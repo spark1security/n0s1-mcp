@@ -1,11 +1,13 @@
 # .github/workflows/publish-mcp.yml
 name: Publish to MCP Registry
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Publish to PyPI"]
+    types: [completed]
 
 jobs:
   publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,6 +16,6 @@ jobs:
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
           sudo mv mcp-publisher /usr/local/bin/
       - name: Publish to MCP Registry
-        run: mcp-publisher publish
-        env:
-          MCP_REGISTRY_TOKEN: ${{ secrets.MCP_REGISTRY_TOKEN }}
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
