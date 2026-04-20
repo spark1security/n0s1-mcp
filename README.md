@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.spark1security/n0s1-mcp -->
 # n0s1-mcp
 
 An [MCP](https://modelcontextprotocol.io/) server that exposes [n0s1](https://github.com/spark1security/n0s1) secret-scanning capabilities as tools for AI assistants (Claude, Cursor, etc.).

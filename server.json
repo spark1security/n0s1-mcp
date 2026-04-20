@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.spark1security/n0s1-mcp",
+  "description": "Secret scanner for Slack, Jira, Confluence, Asana, Wrike, Linear, Zendesk, GitHub and GitLab",
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "n0s1-mcp",
+      "version": "0.1.0",
+      "runtime_hint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "API key for n0s1 Professional",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "N0S1_TOKEN"
+        }
+      ]
+    }
+  ]
+}
