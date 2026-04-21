@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "n0s1-mcp"
-version = "1.0.3"
+version = "1.0.4"
 description = "MCP server for n0s1 — scan Jira, Confluence, Slack, GitHub, GitLab, Zendesk, Linear, Asana, Wrike, and local files for leaked secrets"
 readme = "README.md"
 license = { file = "LICENSE" }

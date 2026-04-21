@@ -17,5 +17,5 @@ jobs:
           sudo mv mcp-publisher /usr/local/bin/
       - name: Publish to MCP Registry
         run: |
-          ./mcp-publisher login github-oidc
-          ./mcp-publisher publish
+          /usr/local/bin/mcp-publisher login github-oidc
+          /usr/local/bin/mcp-publisher publish

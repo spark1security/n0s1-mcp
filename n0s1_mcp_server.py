@@ -215,10 +215,11 @@ def run_scan(target: str, **kwargs) -> str:
         "",
     ]
     for finding in findings.values():
-        ticket = finding.get("ticket_data", {})
-        lines.append(f"• {ticket.get('issue_id', '?')} [{ticket.get('field', '?')}] — {ticket.get('url', '')}")
-        for match in finding.get("matches", []):
-            lines.append(f"    Pattern: {match.get('pattern_name')} | Secret: {match.get('sanitized_secret')}")
+        details = finding.get("details", {})
+        regex_config = details.get("matched_regex_config", {})
+        lines.append(f"• {regex_config.get('id', '?')} [{details.get('platform', '?')} {details.get('ticket_field', '?')}] — {finding.get('url', '')}")
+        lines.append(f"    Pattern: {regex_config.get('regex')}")
+        lines.append(f"    Secret: \n{finding.get('secret')}")
 
     return "\n".join(lines)
 
