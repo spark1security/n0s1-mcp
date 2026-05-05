@@ -1,17 +1,134 @@
-import os
 import asyncio
+import json
+import os
+import uuid
+
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import TextContent, Tool
+
+from n0s1.mcp_tools import (
+    Finding,
+    FindingsPage,
+    ScanResult,
+    ScanSummary,
+    Severity,
+    Status,
+    ToolContext,
+    Usage,
+    get_scan_findings,
+    get_scan_status,
+    redact_match,
+    scan_asana,
+    scan_confluence,
+    scan_github,
+    scan_gitlab,
+    scan_jira,
+    scan_linear,
+    scan_slack,
+    scan_wrike,
+    scan_zendesk,
+    usage_block,
+)
 
 try:
-    import scanner
+    import scanner as _scanner
 except ImportError:
-    import n0s1.scanner as scanner
+    import n0s1.scanner as _scanner
 
 app = Server("n0s1")
 
-# ─── Tool definitions ────────────────────────────────────────────────────────
+# ─── stdio ToolContext factory ────────────────────────────────────────────────
+
+def stdio_context() -> ToolContext:
+    return ToolContext(
+        user_id=None,
+        token_id=None,
+        agent_session_id=None,
+        runner=os.getenv("RUNNER_ENV", "DOCKER"),
+        on_scan_event=None,
+    )
+
+# ─── Local scan helper (scan_local is not in the shared spec) ────────────────
+
+def _run_local_scan(
+    scan_path: str,
+    regex_file: str | None = None,
+    report_format: str = "n0s1",
+    show_matched_secret_on_logs: bool = False,
+) -> ScanResult:
+    report_uuid = str(uuid.uuid4())
+    kwargs: dict = {
+        "scan_path": scan_path,
+        "show_matched_secret_on_logs": show_matched_secret_on_logs,
+        "post_comment": False,
+        "report_format": report_format,
+    }
+    if regex_file:
+        kwargs["regex_file"] = regex_file
+
+    try:
+        s = _scanner.SecretScanner(target="local_scan", **kwargs)
+        report_json = s.scan()
+        sensitive_json = s.report_sensitive_json
+
+        findings_list: list[Finding] = []
+        for fid, f in (report_json.get("findings") or {}).items():
+            matched_cfg = f.get("details", {}).get("matched_regex_config") or {}
+            secret_type = matched_cfg.get("id", "unknown")
+            raw = ""
+            if sensitive_json:
+                raw = sensitive_json.get("findings", {}).get(fid, {}).get("sensitive_secret", "")
+            if not raw:
+                raw = f.get("mocked_secret", "") or f.get("secret", "")
+            url = f.get("url", "")
+            line_number = None
+            if "#L" in url:
+                try:
+                    line_number = int(url.split("#L")[-1])
+                except (ValueError, IndexError):
+                    pass
+            findings_list.append(Finding(
+                file=url,
+                line=line_number,
+                type=secret_type,
+                severity=Severity.high,
+                redacted_match=redact_match(str(raw), secret_type),
+            ))
+
+        by_severity: dict[Severity, int] = {}
+        by_type: dict[str, int] = {}
+        for finding in findings_list:
+            by_severity[finding.severity] = by_severity.get(finding.severity, 0) + 1
+            by_type[finding.type] = by_type.get(finding.type, 0) + 1
+
+        summary = ScanSummary(
+            total_findings=len(findings_list),
+            by_severity=by_severity,
+            by_type=by_type,
+        )
+        use = usage_block({"scan_path": scan_path}, report_json)
+        return ScanResult(
+            report_uuid=report_uuid,
+            status="complete",
+            summary=summary,
+            findings=findings_list,
+            usage=use,
+        )
+    except Exception as exc:
+        return ScanResult(
+            report_uuid=report_uuid,
+            status="failed",
+            summary=ScanSummary(total_findings=0, by_severity={}, by_type={}),
+            usage=Usage(
+                tokens_in_estimate=0,
+                tokens_out_actual=0,
+                tokens_saved_estimate=0,
+                savings_pct=0.0,
+            ),
+        )
+
+# ─── Tool definitions ─────────────────────────────────────────────────────────
 
 @app.list_tools()
 async def list_tools() -> list[Tool]:
@@ -166,80 +283,182 @@ async def list_tools() -> list[Tool]:
                 "required": ["scan_path"],
             },
         ),
+        Tool(
+            name="get_scan_status",
+            description="Return the current status of a previously started scan",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "report_uuid": {"type": "string", "description": "UUID returned by the originating scan_* call"},
+                },
+                "required": ["report_uuid"],
+            },
+        ),
+        Tool(
+            name="get_scan_findings",
+            description="Return a paginated list of findings for a completed scan",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "report_uuid": {"type": "string", "description": "UUID returned by the originating scan_* call"},
+                    "page":     {"type": "string", "description": "Opaque cursor from a previous response (omit for first page)"},
+                    "severity": {"type": "string", "enum": ["info", "low", "medium", "high", "critical"], "description": "Filter findings to this severity level"},
+                },
+                "required": ["report_uuid"],
+            },
+        ),
     ]
-
-# ─── Shared scan runner ───────────────────────────────────────────────────────
-
-_TARGET_MAP = {
-    "scan_jira":       "jira_scan",
-    "scan_confluence": "confluence_scan",
-    "scan_slack":      "slack_scan",
-    "scan_github":     "github_scan",
-    "scan_gitlab":     "gitlab_scan",
-    "scan_zendesk":    "zendesk_scan",
-    "scan_linear":     "linear_scan",
-    "scan_asana":      "asana_scan",
-    "scan_wrike":      "wrike_scan",
-    "scan_local":      "local_scan",
-}
-
-_ENV_MAP = {
-    "jira_scan":       "JIRA_TOKEN",
-    "confluence_scan": "JIRA_TOKEN",
-    "slack_scan":      "SLACK_TOKEN",
-    "github_scan":     "GITHUB_TOKEN",
-    "gitlab_scan":     "GITLAB_TOKEN",
-    "zendesk_scan":    "ZENDESK_TOKEN",
-    "linear_scan":     "LINEAR_TOKEN",
-    "asana_scan":      "ASANA_TOKEN",
-    "wrike_scan":      "WRIKE_TOKEN",
-}
-
-
-def run_scan(target: str, **kwargs) -> str:
-    s = scanner.SecretScanner(target=target, **kwargs)
-    result = s.scan()
-
-    if not result:
-        return "Scan completed. No findings."
-
-    findings = result.get("findings", {})
-    tool_info = result.get("tool", {})
-    scan_date = result.get("scan_date", {}).get("date_utc", "unknown")
-
-    lines = [
-        f"n0s1 v{tool_info.get('version', '?')} scan complete",
-        f"Target: {target}",
-        f"Date: {scan_date}",
-        f"Total findings: {len(findings)}",
-        "",
-    ]
-    for finding in findings.values():
-        details = finding.get("details", {})
-        regex_config = details.get("matched_regex_config", {})
-        lines.append(f"• {regex_config.get('id', '?')} [{details.get('platform', '?')} {details.get('ticket_field', '?')}] — {finding.get('url', '')}")
-        lines.append(f"    Pattern: {regex_config.get('regex')}")
-        lines.append(f"    Secret: \n{finding.get('secret')}")
-
-    return "\n".join(lines)
 
 # ─── Tool handlers ────────────────────────────────────────────────────────────
+
+def _json_text(model) -> list[TextContent]:
+    return [TextContent(type="text", text=json.dumps(model.model_dump(mode="json")))]
+
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     try:
-        target = _TARGET_MAP.get(name)
-        if not target:
+        ctx = stdio_context()
+
+        if name == "scan_jira":
+            result = await asyncio.to_thread(
+                scan_jira,
+                workspace_url=arguments["server"],
+                scope=arguments.get("scope"),
+                api_key=arguments.get("api_key") or os.getenv("JIRA_TOKEN"),
+                email=arguments.get("email") or os.getenv("JIRA_EMAIL"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_confluence":
+            result = await asyncio.to_thread(
+                scan_confluence,
+                workspace_url=arguments["server"],
+                scope=arguments.get("scope"),
+                api_key=arguments.get("api_key") or os.getenv("JIRA_TOKEN"),
+                email=arguments.get("email") or os.getenv("JIRA_EMAIL"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_slack":
+            result = await asyncio.to_thread(
+                scan_slack,
+                api_key=arguments.get("api_key") or os.getenv("SLACK_TOKEN"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_github":
+            owner = arguments["owner"]
+            repo_name = arguments.get("repo", "")
+            combined = f"{owner}/{repo_name}" if repo_name else owner
+            result = await asyncio.to_thread(
+                scan_github,
+                repo=combined,
+                branch=arguments.get("branch"),
+                scope=arguments.get("scope"),
+                api_key=arguments.get("api_key") or os.getenv("GITHUB_TOKEN"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_gitlab":
+            owner = arguments["owner"]
+            repo_name = arguments.get("repo", "")
+            combined = f"{owner}/{repo_name}" if repo_name else owner
+            result = await asyncio.to_thread(
+                scan_gitlab,
+                repo=combined,
+                server=arguments.get("server"),
+                branch=arguments.get("branch"),
+                api_key=arguments.get("api_key") or os.getenv("GITLAB_TOKEN"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_zendesk":
+            result = await asyncio.to_thread(
+                scan_zendesk,
+                workspace_url=arguments["server"],
+                api_key=arguments.get("api_key") or os.getenv("ZENDESK_TOKEN"),
+                email=arguments.get("email") or os.getenv("ZENDESK_EMAIL"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_linear":
+            result = await asyncio.to_thread(
+                scan_linear,
+                api_key=arguments.get("api_key") or os.getenv("LINEAR_TOKEN"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_asana":
+            result = await asyncio.to_thread(
+                scan_asana,
+                scope=arguments.get("scope"),
+                api_key=arguments.get("api_key") or os.getenv("ASANA_TOKEN"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_wrike":
+            result = await asyncio.to_thread(
+                scan_wrike,
+                scope=arguments.get("scope"),
+                api_key=arguments.get("api_key") or os.getenv("WRIKE_TOKEN"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "scan_local":
+            result = await asyncio.to_thread(
+                _run_local_scan,
+                scan_path=arguments["scan_path"],
+                regex_file=arguments.get("regex_file"),
+                report_format=arguments.get("report_format", "n0s1"),
+                show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+            )
+            return _json_text(result)
+
+        elif name == "get_scan_status":
+            result = get_scan_status(arguments["report_uuid"], ctx=ctx)
+            return _json_text(result)
+
+        elif name == "get_scan_findings":
+            severity_arg = arguments.get("severity")
+            severity = Severity(severity_arg) if severity_arg else None
+            result = get_scan_findings(
+                arguments["report_uuid"],
+                page=arguments.get("page"),
+                severity=severity,
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        else:
             raise ValueError(f"Unknown tool: {name}")
-
-        if "api_key" not in arguments:
-            env_key = _ENV_MAP.get(target)
-            token = env_key and os.getenv(env_key)
-            if token:
-                arguments["api_key"] = token
-
-        text = await asyncio.to_thread(run_scan, target, **arguments)
-        return [TextContent(type="text", text=text)]
 
     except Exception as e:
         return [TextContent(type="text", text=f"Error running {name}: {e}")]
