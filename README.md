@@ -37,6 +37,8 @@ For Claude Code: `.claude/mcp.json` in your project, or `~/.claude/mcp.json` glo
 | `scan_asana` | Scan Asana tasks | `api_key` |
 | `scan_wrike` | Scan Wrike tasks | `api_key` |
 | `scan_local` | Scan local filesystem | `scan_path` |
+| `get_scan_status` | Get status of a running/completed scan | `report_uuid` |
+| `get_scan_findings` | Get paginated findings for a completed scan | `report_uuid` |
 
 ## Environment Variables
 
@@ -45,10 +47,12 @@ Credentials can be passed as tool arguments or pre-set as environment variables:
 | Variable | Used by |
 |----------|---------|
 | `JIRA_TOKEN` | `scan_jira`, `scan_confluence` |
+| `JIRA_EMAIL` | `scan_jira`, `scan_confluence` |
 | `SLACK_TOKEN` | `scan_slack` |
 | `GITHUB_TOKEN` | `scan_github` |
 | `GITLAB_TOKEN` | `scan_gitlab` |
 | `ZENDESK_TOKEN` | `scan_zendesk` |
+| `ZENDESK_EMAIL` | `scan_zendesk` |
 | `LINEAR_TOKEN` | `scan_linear` |
 | `ASANA_TOKEN` | `scan_asana` |
 | `WRIKE_TOKEN` | `scan_wrike` |
