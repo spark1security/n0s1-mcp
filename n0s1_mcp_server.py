@@ -8,6 +8,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from n0s1.mcp_tools import (
+    AnalysisStatus,
     Finding,
     FindingsPage,
     ScanResult,
@@ -16,6 +17,7 @@ from n0s1.mcp_tools import (
     Status,
     ToolContext,
     Usage,
+    analyze_report,
     get_scan_findings,
     get_scan_status,
     redact_match,
@@ -146,6 +148,8 @@ async def list_tools() -> list[Tool]:
                     "post_comment":  {"type": "boolean", "description": "Auto-post warning comments on findings"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["server", "email", "api_key"],
             },
@@ -162,6 +166,8 @@ async def list_tools() -> list[Tool]:
                     "scope":         {"type": "string", "description": "CQL query e.g. cql:space=SEC and type=page"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["server", "email", "api_key"],
             },
@@ -175,6 +181,8 @@ async def list_tools() -> list[Tool]:
                     "api_key":       {"type": "string", "description": "Slack bot token (xoxb-...)"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["api_key"],
             },
@@ -192,6 +200,8 @@ async def list_tools() -> list[Tool]:
                     "scope":   {"type": "string", "description": "Search query e.g. search:org:myorg"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["api_key", "owner"],
             },
@@ -209,6 +219,8 @@ async def list_tools() -> list[Tool]:
                     "branch":  {"type": "string", "description": "Branch to scan (optional)"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["api_key", "owner"],
             },
@@ -224,6 +236,8 @@ async def list_tools() -> list[Tool]:
                     "api_key": {"type": "string", "description": "Zendesk API token"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["server", "email", "api_key"],
             },
@@ -237,6 +251,8 @@ async def list_tools() -> list[Tool]:
                     "api_key": {"type": "string", "description": "Linear API key (lin_api_...)"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["api_key"],
             },
@@ -251,6 +267,8 @@ async def list_tools() -> list[Tool]:
                     "scope":   {"type": "string", "description": "Workspace or project scope filter"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["api_key"],
             },
@@ -265,6 +283,8 @@ async def list_tools() -> list[Tool]:
                     "scope":   {"type": "string", "description": "Folder or space scope filter"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
+                    "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                 },
                 "required": ["api_key"],
             },
@@ -307,6 +327,25 @@ async def list_tools() -> list[Tool]:
                 "required": ["report_uuid"],
             },
         ),
+        Tool(
+            name="analyze_report",
+            description=(
+                "Submit or advance async AI analysis for a previously uploaded report. "
+                "Call once after a scan to queue analysis, then call again periodically "
+                "until ai_analysis_status is 'complete' or 'failed'. "
+                "Pass report_file when the status is 'waiting_client' so real credentials "
+                "can be injected into the HTTP validator requests."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "report_uuid":  {"type": "string", "description": "UUID returned by a scan_* tool or a previous analyze_report call"},
+                    "n0s1_api_key": {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
+                    "report_file":  {"type": "string", "description": "Path to local report JSON file — required when status is 'waiting_client'"},
+                },
+                "required": ["report_uuid"],
+            },
+        ),
     ]
 
 # ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -329,6 +368,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 email=arguments.get("email") or os.getenv("JIRA_EMAIL"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -342,6 +383,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 email=arguments.get("email") or os.getenv("JIRA_EMAIL"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -352,6 +395,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 api_key=arguments.get("api_key") or os.getenv("SLACK_TOKEN"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -368,6 +413,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 api_key=arguments.get("api_key") or os.getenv("GITHUB_TOKEN"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -384,6 +431,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 api_key=arguments.get("api_key") or os.getenv("GITLAB_TOKEN"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -396,6 +445,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 email=arguments.get("email") or os.getenv("ZENDESK_EMAIL"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -406,6 +457,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 api_key=arguments.get("api_key") or os.getenv("LINEAR_TOKEN"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -417,6 +470,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 api_key=arguments.get("api_key") or os.getenv("ASANA_TOKEN"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -428,6 +483,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 api_key=arguments.get("api_key") or os.getenv("WRIKE_TOKEN"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                ai_analysis=arguments.get("ai_analysis", False),
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -453,6 +510,16 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 arguments["report_uuid"],
                 page=arguments.get("page"),
                 severity=severity,
+                ctx=ctx,
+            )
+            return _json_text(result)
+
+        elif name == "analyze_report":
+            result = await asyncio.to_thread(
+                analyze_report,
+                arguments["report_uuid"],
+                n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
+                report_file=arguments.get("report_file"),
                 ctx=ctx,
             )
             return _json_text(result)
