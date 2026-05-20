@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import n0s1_mcp_server as server
 
 from n0s1.mcp_tools import (
+    AnalysisStatus,
     Finding,
     FindingsPage,
     ScanResult,
@@ -27,7 +28,8 @@ _SHARED_SPEC_TOOLS = {
     "get_scan_status", "get_scan_findings",
 }
 _LOCAL_TOOLS = {"scan_local"}
-_ALL_TOOLS = _SHARED_SPEC_TOOLS | _LOCAL_TOOLS
+_ANALYSIS_TOOLS = {"analyze_report"}
+_ALL_TOOLS = _SHARED_SPEC_TOOLS | _LOCAL_TOOLS | _ANALYSIS_TOOLS
 
 
 def _fake_scan_result(report_uuid="test-uuid"):
@@ -112,6 +114,17 @@ def test_scan_local_required_args():
     assert set(loc.inputSchema["required"]) == {"scan_path"}
 
 
+def test_analyze_report_registered():
+    tools = asyncio.run(server.list_tools())
+    assert any(t.name == "analyze_report" for t in tools)
+
+
+def test_analyze_report_required_args():
+    tools = asyncio.run(server.list_tools())
+    ar = next(t for t in tools if t.name == "analyze_report")
+    assert set(ar.inputSchema["required"]) == {"report_uuid"}
+
+
 # ─── Passthrough args present in schemas ─────────────────────────────────────
 
 @pytest.mark.parametrize("tool_name", list(_SHARED_SPEC_TOOLS - {"get_scan_status", "get_scan_findings"}) + ["scan_local"])
@@ -121,6 +134,15 @@ def test_report_format_and_show_secret_present(tool_name):
     props = tool.inputSchema["properties"]
     assert "report_format" in props
     assert "show_matched_secret_on_logs" in props
+
+
+@pytest.mark.parametrize("tool_name", list(_SHARED_SPEC_TOOLS - {"get_scan_status", "get_scan_findings"}))
+def test_ai_analysis_and_n0s1_api_key_present(tool_name):
+    tools = asyncio.run(server.list_tools())
+    tool = next(t for t in tools if t.name == tool_name)
+    props = tool.inputSchema["properties"]
+    assert "ai_analysis" in props
+    assert "n0s1_api_key" in props
 
 
 # ─── Round-trip tests ─────────────────────────────────────────────────────────
@@ -182,6 +204,20 @@ def test_call_tool_get_scan_findings(monkeypatch):
     results = asyncio.run(server.call_tool("get_scan_findings", {"report_uuid": "abc"}))
     payload = json.loads(results[0].text)
     FindingsPage.model_validate(payload)
+
+
+def test_call_tool_analyze_report_returns_valid_json(monkeypatch):
+    fake_status = AnalysisStatus(
+        report_uuid="abc",
+        ai_analysis_status="queued",
+        message="Analysis queued successfully",
+    )
+    monkeypatch.setattr(server, "analyze_report", lambda *a, **kw: fake_status)
+    results = asyncio.run(server.call_tool("analyze_report", {"report_uuid": "abc"}))
+    assert len(results) == 1
+    payload = json.loads(results[0].text)
+    parsed = AnalysisStatus.model_validate(payload)
+    assert parsed.ai_analysis_status == "queued"
 
 
 # ─── Error handling ───────────────────────────────────────────────────────────
