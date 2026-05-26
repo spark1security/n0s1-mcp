@@ -39,6 +39,17 @@ For Claude Code: `.claude/mcp.json` in your project, or `~/.claude/mcp.json` glo
 | `scan_local` | Scan local filesystem | `scan_path` |
 | `get_scan_status` | Get status of a running/completed scan | `report_uuid` |
 | `get_scan_findings` | Get paginated findings for a completed scan | `report_uuid` |
+| `analyze_report` | Submit or advance async AI credential validation | `report_uuid` |
+
+All `scan_*` tools (except `scan_local`) accept these optional parameters:
+
+| Parameter | Description |
+|---|---|
+| `ai_analysis` | Queue async AI credential validation after the scan (requires n0s1 Professional) |
+| `n0s1_api_key` | n0s1 API key; overrides `N0S1_TOKEN` env var |
+| `allow_secret_upload` | Allow encrypted secrets to be uploaded to the n0s1 backend (default: `false`) |
+
+Pass `wait_minutes` to `analyze_report` (or directly on a scan tool alongside `ai_analysis`) to block until analysis completes.
 
 ## Environment Variables
 
@@ -46,6 +57,7 @@ Credentials can be passed as tool arguments or pre-set as environment variables:
 
 | Variable | Used by |
 |----------|---------|
+| `N0S1_TOKEN` | All scan tools with `ai_analysis` — Professional mode uploads and AI analysis |
 | `JIRA_TOKEN` | `scan_jira`, `scan_confluence` |
 | `JIRA_EMAIL` | `scan_jira`, `scan_confluence` |
 | `SLACK_TOKEN` | `scan_slack` |
@@ -81,6 +93,9 @@ Once connected, ask your AI assistant:
 - *"Scan my Jira project SEC for leaked secrets"*
 - *"Check the GitHub org mycompany for exposed API keys"*
 - *"Scan the /home/user/project directory for secrets"*
+- *"Run an AI analysis on the scan report abc123"*
+
+For full parameter reference and AI analysis workflow details, see [docs/ai.md](docs/ai.md).
 
 ## Publishing to PyPI
 
