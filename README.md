@@ -41,10 +41,11 @@ For Claude Code: `.claude/mcp.json` in your project, or `~/.claude/mcp.json` glo
 | `get_scan_findings` | Get paginated findings for a completed scan | `report_uuid` |
 | `analyze_report` | Submit or advance async AI credential validation | `report_uuid` |
 
-All `scan_*` tools (except `scan_local`) accept these optional parameters:
+All `scan_*` tools accept these optional parameters:
 
 | Parameter | Description |
 |---|---|
+| `report_uuid` | UUID to assign to the scan report. When set, overrides the auto-generated UUID written to the report JSON. |
 | `ai_analysis` | Queue async AI credential validation after the scan (requires n0s1 Professional) |
 | `n0s1_api_key` | n0s1 API key; overrides `N0S1_TOKEN` env var |
 | `allow_secret_upload` | Allow encrypted secrets to be uploaded to the n0s1 backend (default: `false`) |
