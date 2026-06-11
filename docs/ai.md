@@ -83,10 +83,11 @@ With pre-configured credentials:
 
 ---
 
-## Common Optional Parameters (all `scan_*` tools except `scan_local`)
+## Common Optional Parameters (all `scan_*` tools)
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
+| `report_uuid` | str | — | UUID to assign to the scan report; overrides the auto-generated one |
 | `report_format` | `"n0s1"` \| `"sarif"` \| `"gitlab"` | `"n0s1"` | Output format |
 | `show_matched_secret_on_logs` | bool | `false` | Include raw secret values in output |
 | `ai_analysis` | bool | `false` | Queue async AI credential validation after upload (requires `n0s1_api_key` or `N0S1_TOKEN`) |
@@ -179,7 +180,7 @@ With pre-configured credentials:
 | `report_format` | no | `"n0s1"` \| `"sarif"` \| `"gitlab"` (default: `"n0s1"`) |
 | `show_matched_secret_on_logs` | no | Include raw secret values in output |
 
-`scan_local` does not support `ai_analysis`, `n0s1_api_key`, or `allow_secret_upload`.
+`scan_local` does not support `ai_analysis`, `n0s1_api_key`, or `allow_secret_upload`. It does support `report_uuid`.
 
 ### `get_scan_status`
 

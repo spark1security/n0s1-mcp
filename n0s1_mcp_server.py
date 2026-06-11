@@ -58,8 +58,9 @@ def _run_local_scan(
     regex_file: str | None = None,
     report_format: str = "n0s1",
     show_matched_secret_on_logs: bool = False,
+    report_uuid: str | None = None,
 ) -> ScanResult:
-    report_uuid = str(uuid.uuid4())
+    report_uuid = report_uuid or str(uuid.uuid4())
     kwargs: dict = {
         "scan_path": scan_path,
         "show_matched_secret_on_logs": show_matched_secret_on_logs,
@@ -68,6 +69,8 @@ def _run_local_scan(
     }
     if regex_file:
         kwargs["regex_file"] = regex_file
+    if report_uuid:
+        kwargs["report_uuid"] = report_uuid
 
     try:
         s = _scanner.SecretScanner(target="local_scan", **kwargs)
@@ -151,6 +154,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["server", "email", "api_key"],
             },
@@ -170,6 +174,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["server", "email", "api_key"],
             },
@@ -186,6 +191,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["api_key"],
             },
@@ -206,6 +212,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["api_key", "owner"],
             },
@@ -226,6 +233,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["api_key", "owner"],
             },
@@ -244,6 +252,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["server", "email", "api_key"],
             },
@@ -260,6 +269,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["api_key"],
             },
@@ -277,6 +287,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["api_key"],
             },
@@ -294,6 +305,7 @@ async def list_tools() -> list[Tool]:
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
                     "allow_secret_upload": {"type": "boolean", "description": "Allow encrypted secrets to be uploaded to the n0s1 backend (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["api_key"],
             },
@@ -308,6 +320,7 @@ async def list_tools() -> list[Tool]:
                     "regex_file":    {"type": "string", "description": "Path to custom regex YAML file (optional)"},
                     "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
+                    "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["scan_path"],
             },
@@ -384,6 +397,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -400,6 +414,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -413,6 +428,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -432,6 +448,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -451,6 +468,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -466,6 +484,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -479,6 +498,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -493,6 +513,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -507,6 +528,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 ai_analysis=arguments.get("ai_analysis", False),
                 n0s1_token=arguments.get("n0s1_api_key") or os.getenv("N0S1_TOKEN"),
                 allow_secret_upload=arguments.get("allow_secret_upload", False),
+                report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
             return _json_text(result)
@@ -518,6 +540,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 regex_file=arguments.get("regex_file"),
                 report_format=arguments.get("report_format", "n0s1"),
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
+                report_uuid=arguments.get("report_uuid"),
             )
             return _json_text(result)
 
