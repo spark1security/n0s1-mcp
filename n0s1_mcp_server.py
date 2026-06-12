@@ -112,7 +112,7 @@ def _run_local_scan(
             by_severity=by_severity,
             by_type=by_type,
         )
-        use = usage_block({"scan_path": scan_path}, report_json)
+        use = usage_block(s.raw_chars_scanned, report_json)
         return ScanResult(
             report_uuid=report_uuid,
             status="complete",
