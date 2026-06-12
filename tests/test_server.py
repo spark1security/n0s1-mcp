@@ -220,14 +220,14 @@ def test_call_tool_analyze_report_returns_valid_json(monkeypatch):
     assert parsed.ai_analysis_status == "queued"
 
 
-def test_analyze_report_schema_has_wait_seconds():
+def test_analyze_report_schema_has_wait_minutes():
     tools = asyncio.run(server.list_tools())
     ar = next(t for t in tools if t.name == "analyze_report")
-    assert "wait_seconds" in ar.inputSchema["properties"]
-    assert ar.inputSchema["properties"]["wait_seconds"]["type"] == "integer"
+    assert "wait_minutes" in ar.inputSchema["properties"]
+    assert ar.inputSchema["properties"]["wait_minutes"]["type"] == "integer"
 
 
-def test_analyze_report_forwards_wait_seconds(monkeypatch):
+def test_analyze_report_forwards_wait_minutes(monkeypatch):
     captured = {}
 
     def fake_analyze_report(*a, **kw):
@@ -235,11 +235,11 @@ def test_analyze_report_forwards_wait_seconds(monkeypatch):
         return AnalysisStatus(report_uuid="abc", ai_analysis_status="complete", message="done")
 
     monkeypatch.setattr(server, "analyze_report", fake_analyze_report)
-    asyncio.run(server.call_tool("analyze_report", {"report_uuid": "abc", "wait_seconds": 120}))
-    assert captured.get("wait_seconds") == 120
+    asyncio.run(server.call_tool("analyze_report", {"report_uuid": "abc", "wait_minutes": 2}))
+    assert captured.get("wait_minutes") == 2
 
 
-def test_analyze_report_omits_wait_seconds_when_not_provided(monkeypatch):
+def test_analyze_report_omits_wait_minutes_when_not_provided(monkeypatch):
     captured = {}
 
     def fake_analyze_report(*a, **kw):
@@ -248,7 +248,7 @@ def test_analyze_report_omits_wait_seconds_when_not_provided(monkeypatch):
 
     monkeypatch.setattr(server, "analyze_report", fake_analyze_report)
     asyncio.run(server.call_tool("analyze_report", {"report_uuid": "abc"}))
-    assert captured.get("wait_seconds") is None
+    assert captured.get("wait_minutes") is None
 
 
 # ─── Error handling ───────────────────────────────────────────────────────────
