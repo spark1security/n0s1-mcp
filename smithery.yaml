@@ -1,0 +1,15 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: []
+    properties:
+      n0s1Token:
+        type: string
+        description: "API key for n0s1 Professional (optional). Enables hosted scanning and extended features."
+  commandFunction: |-
+    (config) => ({
+      command: 'uvx',
+      args: ['n0s1-mcp'],
+      env: config.n0s1Token ? { N0S1_TOKEN: config.n0s1Token } : {}
+    })
