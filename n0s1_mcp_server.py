@@ -5,7 +5,7 @@ import uuid
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import TextContent, Tool, ToolAnnotations
 
 from n0s1.mcp_tools import (
     AnalysisStatus,
@@ -133,6 +133,18 @@ def _run_local_scan(
             ),
         )
 
+# ─── Output schemas (derived from Pydantic models) ───────────────────────────
+
+_SCAN_SCHEMA     = ScanResult.model_json_schema()
+_STATUS_SCHEMA   = Status.model_json_schema()
+_FINDINGS_SCHEMA = FindingsPage.model_json_schema()
+_ANALYSIS_SCHEMA = AnalysisStatus.model_json_schema()
+
+# Shared annotations
+_SCAN_ANN  = ToolAnnotations(readOnlyHint=True,  openWorldHint=True)
+_READ_ANN  = ToolAnnotations(readOnlyHint=True,  openWorldHint=False)
+_WRITE_ANN = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True)
+
 # ─── Tool definitions ─────────────────────────────────────────────────────────
 
 @app.list_tools()
@@ -149,7 +161,7 @@ async def list_tools() -> list[Tool]:
                     "api_key":       {"type": "string", "description": "Jira API token"},
                     "scope":         {"type": "string", "description": "JQL query e.g. jql:project = SEC"},
                     "post_comment":  {"type": "boolean", "description": "Auto-post warning comments on findings"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -158,6 +170,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["server", "email", "api_key"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_confluence",
@@ -169,7 +183,7 @@ async def list_tools() -> list[Tool]:
                     "email":         {"type": "string", "description": "Confluence user email"},
                     "api_key":       {"type": "string", "description": "Confluence API token"},
                     "scope":         {"type": "string", "description": "CQL query e.g. cql:space=SEC and type=page"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -178,6 +192,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["server", "email", "api_key"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_slack",
@@ -186,7 +202,7 @@ async def list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "api_key":       {"type": "string", "description": "Slack bot token (xoxb-...)"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -195,6 +211,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["api_key"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_github",
@@ -207,7 +225,7 @@ async def list_tools() -> list[Tool]:
                     "repo":    {"type": "string", "description": "Repository name (optional, scans all repos if omitted)"},
                     "branch":  {"type": "string", "description": "Branch to scan (optional)"},
                     "scope":   {"type": "string", "description": "Search query e.g. search:org:myorg"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -216,6 +234,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["api_key", "owner"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_gitlab",
@@ -228,7 +248,7 @@ async def list_tools() -> list[Tool]:
                     "owner":   {"type": "string", "description": "GitLab group or user"},
                     "repo":    {"type": "string", "description": "Project name (optional, scans all if omitted)"},
                     "branch":  {"type": "string", "description": "Branch to scan (optional)"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -237,6 +257,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["api_key", "owner"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_zendesk",
@@ -247,7 +269,7 @@ async def list_tools() -> list[Tool]:
                     "server":  {"type": "string", "description": "Zendesk subdomain e.g. mycompany.zendesk.com"},
                     "email":   {"type": "string", "description": "Zendesk user email"},
                     "api_key": {"type": "string", "description": "Zendesk API token"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -256,6 +278,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["server", "email", "api_key"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_linear",
@@ -264,7 +288,7 @@ async def list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "api_key": {"type": "string", "description": "Linear API key (lin_api_...)"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -273,6 +297,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["api_key"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_asana",
@@ -282,7 +308,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "api_key": {"type": "string", "description": "Asana personal access token"},
                     "scope":   {"type": "string", "description": "Workspace or project scope filter"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -291,6 +317,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["api_key"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_wrike",
@@ -300,7 +328,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "api_key": {"type": "string", "description": "Wrike permanent access token"},
                     "scope":   {"type": "string", "description": "Folder or space scope filter"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "ai_analysis":   {"type": "boolean", "description": "Queue async AI credential validation after the scan (requires n0s1 Pro)"},
                     "n0s1_api_key":  {"type": "string", "description": "n0s1 API key; overrides the N0S1_TOKEN env var"},
@@ -309,6 +337,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["api_key"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=_SCAN_ANN,
         ),
         Tool(
             name="scan_local",
@@ -318,12 +348,14 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "scan_path":     {"type": "string", "description": "Absolute or relative path to scan"},
                     "regex_file":    {"type": "string", "description": "Path to custom regex YAML file (optional)"},
-                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1"},
+                    "report_format": {"type": "string", "enum": ["n0s1", "sarif", "gitlab"], "default": "n0s1", "description": "Output report format"},
                     "show_matched_secret_on_logs": {"type": "boolean", "description": "Show matched secret values in reports and logs (default: false)"},
                     "report_uuid": {"type": "string", "description": "UUID to assign to the scan report; overrides the auto-generated one"},
                 },
                 "required": ["scan_path"],
             },
+            outputSchema=_SCAN_SCHEMA,
+            annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
         ),
         Tool(
             name="get_scan_status",
@@ -335,6 +367,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["report_uuid"],
             },
+            outputSchema=_STATUS_SCHEMA,
+            annotations=_READ_ANN,
         ),
         Tool(
             name="get_scan_findings",
@@ -348,6 +382,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["report_uuid"],
             },
+            outputSchema=_FINDINGS_SCHEMA,
+            annotations=_READ_ANN,
         ),
         Tool(
             name="analyze_report",
@@ -371,6 +407,8 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["report_uuid"],
             },
+            outputSchema=_ANALYSIS_SCHEMA,
+            annotations=_WRITE_ANN,
         ),
     ]
 
