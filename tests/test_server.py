@@ -166,10 +166,9 @@ def test_call_tool_returns_valid_json_scan_result(tool_name, args, monkeypatch):
     monkeypatch.setattr(server, fn_name, lambda *a, **kw: fake)
 
     results = asyncio.run(server.call_tool(tool_name, args))
-    assert len(results) == 1
-    payload = json.loads(results[0].text)
-    # Must validate against ScanResult schema
-    parsed = ScanResult.model_validate(payload)
+    assert not results.isError
+    assert results.structuredContent is not None
+    parsed = ScanResult.model_validate(results.structuredContent)
     assert parsed.status == "complete"
     assert parsed.summary.total_findings == 1
 
@@ -178,9 +177,9 @@ def test_call_tool_scan_local_returns_valid_json(monkeypatch):
     fake = _fake_scan_result()
     monkeypatch.setattr(server, "_run_local_scan", lambda *a, **kw: fake)
     results = asyncio.run(server.call_tool("scan_local", {"scan_path": "/tmp/test"}))
-    assert len(results) == 1
-    payload = json.loads(results[0].text)
-    parsed = ScanResult.model_validate(payload)
+    assert not results.isError
+    assert results.structuredContent is not None
+    parsed = ScanResult.model_validate(results.structuredContent)
     assert parsed.status == "complete"
 
 
@@ -188,8 +187,8 @@ def test_call_tool_get_scan_status(monkeypatch):
     fake_status = Status(report_uuid="abc", status="complete", progress_pct=100.0)
     monkeypatch.setattr(server, "get_scan_status", lambda *a, **kw: fake_status)
     results = asyncio.run(server.call_tool("get_scan_status", {"report_uuid": "abc"}))
-    payload = json.loads(results[0].text)
-    parsed = Status.model_validate(payload)
+    assert not results.isError
+    parsed = Status.model_validate(results.structuredContent)
     assert parsed.status == "complete"
 
 
@@ -202,8 +201,8 @@ def test_call_tool_get_scan_findings(monkeypatch):
     )
     monkeypatch.setattr(server, "get_scan_findings", lambda *a, **kw: fake_page)
     results = asyncio.run(server.call_tool("get_scan_findings", {"report_uuid": "abc"}))
-    payload = json.loads(results[0].text)
-    FindingsPage.model_validate(payload)
+    assert not results.isError
+    FindingsPage.model_validate(results.structuredContent)
 
 
 def test_call_tool_analyze_report_returns_valid_json(monkeypatch):
@@ -214,9 +213,8 @@ def test_call_tool_analyze_report_returns_valid_json(monkeypatch):
     )
     monkeypatch.setattr(server, "analyze_report", lambda *a, **kw: fake_status)
     results = asyncio.run(server.call_tool("analyze_report", {"report_uuid": "abc"}))
-    assert len(results) == 1
-    payload = json.loads(results[0].text)
-    parsed = AnalysisStatus.model_validate(payload)
+    assert not results.isError
+    parsed = AnalysisStatus.model_validate(results.structuredContent)
     assert parsed.ai_analysis_status == "queued"
 
 
@@ -255,15 +253,15 @@ def test_analyze_report_omits_wait_minutes_when_not_provided(monkeypatch):
 
 def test_call_tool_unknown_name():
     results = asyncio.run(server.call_tool("scan_unknown", {}))
-    assert len(results) == 1
-    assert "Error" in results[0].text
+    assert results.isError
+    assert "Error" in results.content[0].text
 
 
 def test_call_tool_missing_required_arg():
     # scan_jira without 'server' should produce an error (KeyError)
     results = asyncio.run(server.call_tool("scan_jira", {"email": "u@x.com", "api_key": "tok"}))
-    assert len(results) == 1
-    assert "Error" in results[0].text
+    assert results.isError
+    assert "Error" in results.content[0].text
 
 
 # ─── Env-var fallback ─────────────────────────────────────────────────────────

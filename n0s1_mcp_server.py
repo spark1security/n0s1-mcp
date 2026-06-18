@@ -5,7 +5,7 @@ import uuid
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool, ToolAnnotations
+from mcp.types import CallToolResult, TextContent, Tool, ToolAnnotations
 
 from n0s1.mcp_tools import (
     AnalysisStatus,
@@ -414,12 +414,16 @@ async def list_tools() -> list[Tool]:
 
 # ─── Tool handlers ────────────────────────────────────────────────────────────
 
-def _json_text(model) -> list[TextContent]:
-    return [TextContent(type="text", text=json.dumps(model.model_dump(mode="json")))]
+def _make_result(model) -> CallToolResult:
+    payload = model.model_dump(mode="json")
+    return CallToolResult(
+        content=[TextContent(type="text", text=json.dumps(payload))],
+        structuredContent=payload,
+    )
 
 
 @app.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+async def call_tool(name: str, arguments: dict) -> CallToolResult:
     try:
         ctx = stdio_context()
 
@@ -438,7 +442,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_confluence":
             result = await asyncio.to_thread(
@@ -455,7 +459,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_slack":
             result = await asyncio.to_thread(
@@ -469,7 +473,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_github":
             owner = arguments["owner"]
@@ -489,7 +493,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_gitlab":
             owner = arguments["owner"]
@@ -509,7 +513,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_zendesk":
             result = await asyncio.to_thread(
@@ -525,7 +529,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_linear":
             result = await asyncio.to_thread(
@@ -539,7 +543,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_asana":
             result = await asyncio.to_thread(
@@ -554,7 +558,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_wrike":
             result = await asyncio.to_thread(
@@ -569,7 +573,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 report_uuid=arguments.get("report_uuid"),
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "scan_local":
             result = await asyncio.to_thread(
@@ -580,11 +584,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 show_matched_secret_on_logs=arguments.get("show_matched_secret_on_logs", False),
                 report_uuid=arguments.get("report_uuid"),
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "get_scan_status":
             result = get_scan_status(arguments["report_uuid"], ctx=ctx)
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "get_scan_findings":
             severity_arg = arguments.get("severity")
@@ -595,7 +599,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 severity=severity,
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         elif name == "analyze_report":
             wait_minutes = arguments.get("wait_minutes")
@@ -607,13 +611,16 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 wait_minutes=int(wait_minutes) if wait_minutes is not None else None,
                 ctx=ctx,
             )
-            return _json_text(result)
+            return _make_result(result)
 
         else:
             raise ValueError(f"Unknown tool: {name}")
 
     except Exception as e:
-        return [TextContent(type="text", text=f"Error running {name}: {e}")]
+        return CallToolResult(
+            content=[TextContent(type="text", text=f"Error running {name}: {e}")],
+            isError=True,
+        )
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
