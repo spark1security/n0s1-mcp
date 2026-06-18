@@ -1,6 +1,9 @@
 <!-- mcp-name: io.github.spark1security/n0s1-mcp -->
 # n0s1-mcp
 
+[![smithery badge](https://smithery.ai/badge/spark1security/n0s1-mcp)](https://smithery.ai/servers/spark1security/n0s1-mcp)
+
+
 An [MCP](https://modelcontextprotocol.io/) server that exposes [n0s1](https://github.com/spark1security/n0s1) secret-scanning capabilities as tools for AI assistants (Claude, Cursor, etc.).
 
 Scan Jira, Confluence, Slack, GitHub, GitLab, Zendesk, Linear, Asana, Wrike, and local filesystems for leaked secrets — directly from your AI workflow.
